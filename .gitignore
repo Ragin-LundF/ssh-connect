@@ -1,0 +1,13 @@
+# IDEs
+.idea/*
+*.iws
+*.iml
+*.ipr
+*.iml
+!.idea/inspectionProfiles
+!.idea/inspectionProfiles/*
+!.run/
+.vscode/*
+
+# don't commit config files
+*.toml
