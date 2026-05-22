@@ -4,6 +4,7 @@ CONFIG_FILE="ssh_connect_server.toml"
 DRY_RUN=0
 INIT_CONFIG=0
 ADD_SERVER=0
+DELETE_SERVER=0
 
 # Arrays that hold parsed server data by index.
 declare -a SERVER_KEYS SERVER_NAMES SERVER_IPS SERVER_USERS SERVER_CERTS
@@ -22,6 +23,7 @@ Options:
   --config    Use a custom TOML config file.
   --init      Create an example config file and exit.
   --add       Add a new server entry using dialog prompts.
+  --delete    Delete a server entry using dialog prompts.
   -h, --help  Show this help message.
 EOF
 }
@@ -43,6 +45,9 @@ parse_args() {
       --add)
         ADD_SERVER=1
         ;;
+      --delete)
+        DELETE_SERVER=1
+        ;;
       -h|--help)
         usage
         exit 0
@@ -53,6 +58,10 @@ parse_args() {
     esac
     shift
   done
+
+  if (( INIT_CONFIG + ADD_SERVER + DELETE_SERVER > 1 )); then
+    fail "Use only one mode at a time: --init, --add, or --delete"
+  fi
 }
 
 init_config_file() {
@@ -170,6 +179,61 @@ EOF
     8 70
 }
 
+delete_server_by_key() {
+  local key="$1"
+  local tmp_file
+
+  tmp_file=$(mktemp) || fail "Could not create temporary file for deletion"
+
+  if ! yq -p toml -o toml "del(.server.\"$key\")" "$CONFIG_FILE" > "$tmp_file"; then
+    rm -f "$tmp_file"
+    fail "Failed to delete server '$key' from ${CONFIG_FILE}"
+  fi
+
+  mv "$tmp_file" "$CONFIG_FILE" || fail "Failed to update ${CONFIG_FILE}"
+}
+
+delete_server_dialog() {
+  local menu_args=()
+  local i choice index key
+
+  for i in "${!SERVER_KEYS[@]}"; do
+    menu_args+=(
+      "$i"
+      "${SERVER_NAMES[$i]} (${SERVER_USERS[$i]}@${SERVER_IPS[$i]})"
+    )
+  done
+
+  choice=$(dialog \
+    --clear \
+    --backtitle "SSH Connect" \
+    --title "Delete Server" \
+    --menu "Choose a server to delete:" \
+    18 78 10 \
+    "${menu_args[@]}" \
+    2>&1 >/dev/tty
+  ) || return 1
+
+  index="$choice"
+  key="${SERVER_KEYS[$index]}"
+
+  dialog \
+    --clear \
+    --backtitle "SSH Connect" \
+    --title "Confirm Deletion" \
+    --yesno "Delete server '$key' (${SERVER_NAMES[$index]})?" \
+    8 70 || return 1
+
+  delete_server_by_key "$key"
+
+  dialog \
+    --clear \
+    --backtitle "SSH Connect" \
+    --title "Server Deleted" \
+    --msgbox "Server '$key' was deleted from ${CONFIG_FILE}." \
+    8 70
+}
+
 check_dependencies() {
   command -v yq >/dev/null 2>&1 || fail "'yq' is required but was not found."
   command -v dialog >/dev/null 2>&1 || fail "'dialog' is required but was not found."
@@ -274,6 +338,18 @@ main() {
     fi
     clear
     echo "Server added to ${CONFIG_FILE}."
+    exit 0
+  fi
+
+  if (( DELETE_SERVER )); then
+    load_servers
+    if ! delete_server_dialog; then
+      clear
+      echo "Cancelled."
+      exit 0
+    fi
+    clear
+    echo "Server deleted from ${CONFIG_FILE}."
     exit 0
   fi
 

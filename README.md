@@ -14,6 +14,7 @@ The script keeps UI and logic separate:
 - Optional `--config <path>` to use a custom TOML file
 - Optional `--init` to create a complete example config file
 - Optional `--add` to add a new server interactively
+- Optional `--delete` to remove a server interactively
 - Safe abort if `--init` target already exists
 
 ## Requirements
@@ -36,6 +37,7 @@ bash ./ssh_connect.sh
 --config <path>     Use a custom TOML config file (default: ssh_connect_server.toml)
 --init              Create an example config file and exit
 --add               Add a new server entry via dialog prompts
+--delete            Delete a server entry via dialog prompts
 -h, --help          Show help
 ```
 
@@ -46,6 +48,7 @@ bash ./ssh_connect.sh --dry-run
 bash ./ssh_connect.sh --config ./my_servers.toml
 bash ./ssh_connect.sh --init --config ./my_servers.toml
 bash ./ssh_connect.sh --add
+bash ./ssh_connect.sh --delete
 ```
 
 ## Configuration Format (TOML)
@@ -101,6 +104,10 @@ These fields are included as a template for future extension. The current runtim
 - `add_new_server_dialog()`
   - Prompts for `alias`, `name`, `ip`, and `user` using `dialog`.
   - Appends a new `[server.<alias>]` section to the TOML config.
+
+- `delete_server_dialog()`
+  - Shows a `dialog` menu to select a server to delete.
+  - Asks for confirmation before removing the selected server.
 
 - `load_servers()`
   - Reads server entries from the TOML file via `yq`.
