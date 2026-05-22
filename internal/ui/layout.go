@@ -15,14 +15,14 @@ func newSection(title string) (*tui.Element, *tui.Element) {
 		tui.WithGap(1),
 		tui.WithPadding(1),
 		tui.WithBorder(tui.BorderRounded),
-		tui.WithBorderStyle(tui.NewStyle().Foreground(tui.Blue)),
+		tui.WithBorderStyle(tui.NewStyle().Foreground(tui.BrightCyan)),
 		tui.WithFlexGrow(1),
 		tui.WithOverflow(tui.OverflowHidden),
 	)
 
 	titleLine := tui.New(
-		tui.WithText(title),
-		tui.WithTextStyle(tui.NewStyle().Foreground(tui.Cyan).Bold()),
+		tui.WithText("▸ "+title+" ◂"),
+		tui.WithTextStyle(tui.NewStyle().Foreground(tui.BrightCyan).Bold()),
 	)
 	section.AddChild(titleLine)
 
@@ -47,26 +47,26 @@ func buildScreenRoot(title, subtitle string, body *tui.Element, footer string) *
 		tui.WithGap(1),
 		tui.WithPadding(1),
 		tui.WithBorder(tui.BorderRounded),
-		tui.WithBorderStyle(tui.NewStyle().Foreground(tui.Blue)),
+		tui.WithBorderStyle(tui.NewStyle().Foreground(tui.BrightMagenta)),
 		tui.WithBackground(tui.NewStyle().Background(tui.Black)),
 	)
 
 	root.AddChild(tui.New(
-		tui.WithText(title),
-		tui.WithTextStyle(tui.NewStyle().Foreground(tui.Cyan).Bold()),
+		tui.WithText("╰─ "+title+" ─╯"),
+		tui.WithTextStyle(tui.NewStyle().Foreground(tui.BrightMagenta).Bold()),
 	))
 
 	if subtitle != "" {
 		root.AddChild(tui.New(
-			tui.WithText(subtitle),
-			tui.WithTextStyle(tui.NewStyle().Foreground(tui.Blue)),
+			tui.WithText("  └─ "+subtitle),
+			tui.WithTextStyle(tui.NewStyle().Foreground(tui.BrightCyan).Dim()),
 		))
 	}
 
 	root.AddChild(body)
 	root.AddChild(tui.New(
-		tui.WithText(footer),
-		tui.WithTextStyle(tui.NewStyle().Foreground(tui.Cyan).Dim()),
+		tui.WithText("───── "+footer+" ─────"),
+		tui.WithTextStyle(tui.NewStyle().Foreground(tui.BrightGreen).Dim()),
 	))
 
 	return root
@@ -77,10 +77,10 @@ func renderList(container *tui.Element, items []string, selected int) {
 	container.RemoveAllChildren()
 	for idx, item := range items {
 		lineStyle := tui.NewStyle().Foreground(tui.White)
-		prefix := "  "
+		prefix := "  ◌ "
 		if idx == selected {
-			prefix = "> "
-			lineStyle = tui.NewStyle().Foreground(tui.White).Background(tui.Blue).Bold()
+			prefix = "  ◉ "
+			lineStyle = tui.NewStyle().Foreground(tui.BrightGreen).Background(tui.BrightBlack).Bold()
 		}
 		container.AddChild(tui.New(
 			tui.WithText(prefix+item),

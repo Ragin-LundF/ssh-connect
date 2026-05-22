@@ -92,14 +92,14 @@ func PromptInput(title, prompt string, required bool) (string, error) {
 		tui.WithGap(1),
 		tui.WithPadding(1),
 		tui.WithBorder(tui.BorderRounded),
-		tui.WithBorderStyle(tui.NewStyle().Foreground(tui.Blue)),
+		tui.WithBorderStyle(tui.NewStyle().Foreground(tui.BrightCyan)),
 	)
-	panel.AddChild(tui.New(tui.WithText(prompt), tui.WithWrap(true), tui.WithTextStyle(tui.NewStyle().Foreground(tui.White))))
+	panel.AddChild(tui.New(tui.WithText("▸ "+prompt), tui.WithWrap(true), tui.WithTextStyle(tui.NewStyle().Foreground(tui.White))))
 
 	inputBox := tui.New(
 		tui.WithBorder(tui.BorderSingle),
 		tui.WithPadding(0),
-		tui.WithTextStyle(tui.NewStyle().Foreground(tui.Cyan)),
+		tui.WithTextStyle(tui.NewStyle().Foreground(tui.BrightGreen)),
 	)
 	errorLabel := tui.New(tui.WithText(""), tui.WithTextStyle(tui.NewStyle().Foreground(tui.BrightRed)))
 	panel.AddChild(inputBox)
@@ -116,7 +116,7 @@ func PromptInput(title, prompt string, required bool) (string, error) {
 			return
 		}
 		inputBox.SetText(string(buf))
-		inputBox.SetTextStyle(tui.NewStyle().Foreground(tui.Cyan))
+		inputBox.SetTextStyle(tui.NewStyle().Foreground(tui.BrightGreen))
 	}
 	refreshInput()
 
@@ -179,9 +179,9 @@ func Confirm(title, question string) (bool, error) {
 		tui.WithGap(1),
 		tui.WithPadding(1),
 		tui.WithBorder(tui.BorderRounded),
-		tui.WithBorderStyle(tui.NewStyle().Foreground(tui.Blue)),
+		tui.WithBorderStyle(tui.NewStyle().Foreground(tui.BrightYellow)),
 	)
-	panel.AddChild(tui.New(tui.WithText(question), tui.WithWrap(true), tui.WithTextStyle(tui.NewStyle().Foreground(tui.White))))
+	panel.AddChild(tui.New(tui.WithText("⚠ "+question), tui.WithWrap(true), tui.WithTextStyle(tui.NewStyle().Foreground(tui.BrightYellow))))
 
 	root := buildScreenRoot(title, "", panel, "Y/Enter: Yes | N/Esc: No")
 
@@ -235,11 +235,11 @@ func ShowMessage(title, message string) error {
 		tui.WithGap(1),
 		tui.WithPadding(1),
 		tui.WithBorder(tui.BorderRounded),
-		tui.WithBorderStyle(tui.NewStyle().Foreground(tui.Blue)),
+		tui.WithBorderStyle(tui.NewStyle().Foreground(tui.BrightBlue)),
 		tui.WithScrollable(tui.ScrollVertical),
 		tui.WithOverflow(tui.OverflowHidden),
 	)
-	panel.AddChild(tui.New(tui.WithText(message), tui.WithWrap(true), tui.WithTextStyle(tui.NewStyle().Foreground(tui.White))))
+	panel.AddChild(tui.New(tui.WithText("ℹ "+message), tui.WithWrap(true), tui.WithTextStyle(tui.NewStyle().Foreground(tui.White))))
 
 	root := buildScreenRoot(title, "", panel, "Enter/Esc: Close")
 

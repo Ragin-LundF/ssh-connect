@@ -31,14 +31,14 @@ func SelectServerHome(configPath string, items []string) (HomeAction, int, error
 	hasServers := len(items) > 0
 	listItems := items
 	if !hasServers {
-		listItems = []string{"No servers found. Press A to add one."}
+		listItems = []string{"✖ No servers found. Press 'A' to add one."}
 	}
 
-	section, listContainer := newSection("Servers")
+	section, listContainer := newSection("Available Servers")
 	renderList(listContainer, listItems, 0)
 
-	hint := "Enter: Connect | A: Add | D: Delete | M: Menu | H: Help | Up/Down: Move | Q/Esc: Quit"
-	root := buildScreenRoot("SSH Connect", fmt.Sprintf("Config: %s", configPath), section, hint)
+	hint := "Enter: Connect | A: Add | D: Delete | M: Menu | H: Help | Up/Down: Move | Q: Quit"
+	root := buildScreenRoot("🔌 SSH Connect", fmt.Sprintf("Config: %s", configPath), section, hint)
 
 	action := HomeQuit
 	selected := 0
