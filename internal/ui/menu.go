@@ -1,11 +1,16 @@
 package ui
 
+import (
+	tui "github.com/grindlemire/go-tui"
+)
+
 // MenuAction represents the choice made in the main menu.
 type MenuAction int
 
 const (
 	MenuConnect MenuAction = iota
 	MenuAdd
+	MenuAddGroup
 	MenuDelete
 	MenuList
 	MenuHelp
@@ -21,34 +26,93 @@ func SelectMainMenu() (MenuAction, error) {
 	choices := []string{
 		"Connect to selected server",
 		"Add server",
+		"Add group",
 		"Delete selected server",
 		"Back to server list",
 		"Help",
 		"Quit",
 	}
 
-	idx, err := SelectIndex("Main Menu", "Choose an action", choices)
-	if err != nil {
-		if err == ErrCancelled {
-			return MenuBack, nil
+	section, listContainer := newSection("Actions")
+	selected := 0
+	renderList(listContainer, choices, selected)
+
+	root := buildScreenRoot("Main Menu", "", section, "Up/Down: Move | Enter: Select | G: Add Group | Esc: Back")
+	action := MenuBack
+
+	if err := runUI(root, "main-menu", func(ke tui.KeyEvent) bool {
+		switch ke.Key {
+		case tui.KeyUp:
+			if selected > 0 {
+				selected--
+				renderList(listContainer, choices, selected)
+			}
+			return true
+		case tui.KeyDown:
+			if selected < len(choices)-1 {
+				selected++
+				renderList(listContainer, choices, selected)
+			}
+			return true
+		case tui.KeyEnter:
+			action = menuActionFromIndex(selected)
+			ke.App().Stop()
+			return true
+		case tui.KeyEscape:
+			action = MenuBack
+			ke.App().Stop()
+			return true
 		}
+
+		r, ok := lowerRune(ke)
+		if !ok {
+			return false
+		}
+
+		switch r {
+		case 'k':
+			if selected > 0 {
+				selected--
+				renderList(listContainer, choices, selected)
+			}
+			return true
+		case 'j':
+			if selected < len(choices)-1 {
+				selected++
+				renderList(listContainer, choices, selected)
+			}
+			return true
+		case 'g':
+			action = MenuAddGroup
+			ke.App().Stop()
+			return true
+		default:
+			return false
+		}
+	}); err != nil {
 		return MenuBack, err
 	}
 
+	return action, nil
+}
+
+func menuActionFromIndex(idx int) MenuAction {
 	switch idx {
 	case 0:
-		return MenuConnect, nil
+		return MenuConnect
 	case 1:
-		return MenuAdd, nil
+		return MenuAdd
 	case 2:
-		return MenuDelete, nil
+		return MenuAddGroup
 	case 3:
-		return MenuList, nil
+		return MenuDelete
 	case 4:
-		return MenuHelp, nil
+		return MenuList
 	case 5:
-		return MenuQuit, nil
+		return MenuHelp
+	case 6:
+		return MenuQuit
 	default:
-		return MenuBack, nil
+		return MenuBack
 	}
 }

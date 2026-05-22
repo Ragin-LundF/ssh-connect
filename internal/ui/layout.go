@@ -38,6 +38,37 @@ func newSection(title string) (*tui.Element, *tui.Element) {
 	return section, content
 }
 
+// newStaticSection creates a bordered section with a non-scrollable content area.
+// Useful for short lists where scroll state can hide content.
+func newStaticSection(title string) (*tui.Element, *tui.Element) {
+	section := tui.New(
+		tui.WithDisplay(tui.DisplayFlex),
+		tui.WithDirection(tui.Column),
+		tui.WithGap(1),
+		tui.WithPadding(1),
+		tui.WithBorder(tui.BorderRounded),
+		tui.WithBorderStyle(tui.NewStyle().Foreground(tui.BrightCyan)),
+		tui.WithFlexGrow(1),
+		tui.WithOverflow(tui.OverflowHidden),
+	)
+
+	titleLine := tui.New(
+		tui.WithText("▸ "+title+" ◂"),
+		tui.WithTextStyle(tui.NewStyle().Foreground(tui.BrightCyan).Bold()),
+	)
+	section.AddChild(titleLine)
+
+	content := tui.New(
+		tui.WithDisplay(tui.DisplayFlex),
+		tui.WithDirection(tui.Column),
+		tui.WithFlexGrow(1),
+		tui.WithOverflow(tui.OverflowHidden),
+	)
+	section.AddChild(content)
+
+	return section, content
+}
+
 // buildScreenRoot assembles the standard full-screen layout:
 // title -> optional subtitle -> body -> footer hint bar.
 func buildScreenRoot(title, subtitle string, body *tui.Element, footer string) *tui.Element {

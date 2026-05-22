@@ -20,7 +20,7 @@ func Delete(opts cli.Options) error {
 
 	labels := make([]string, 0, len(entries))
 	for _, entry := range entries {
-		labels = append(labels, fmt.Sprintf("%s (%s@%s)", entry.Server.Name, entry.Server.User, entry.Server.IP))
+		labels = append(labels, fmt.Sprintf("%s (%s@%s) | %s", entry.Server.Name, entry.Server.User, entry.Server.IP, entry.GroupName))
 	}
 
 	idx, err := ui.SelectIndex("Delete Server", "Choose a server to delete", labels)
@@ -31,21 +31,31 @@ func Delete(opts cli.Options) error {
 		return err
 	}
 
-	return DeleteAlias(opts, entries[idx].Key)
+	return DeleteAlias(opts, entries[idx].GroupKey, entries[idx].Key)
 }
 
-func DeleteAlias(opts cli.Options, alias string) error {
+func DeleteAlias(opts cli.Options, groupKey, alias string) error {
 	cfg, err := config.Load(opts.ConfigPath)
 	if err != nil {
 		return err
 	}
 
-	server, exists := cfg.Server[alias]
+	group, groupExists := cfg.Group[groupKey]
+	if !groupExists {
+		return fmt.Errorf("group '%s' not found", groupKey)
+	}
+
+	server, exists := group.Server[alias]
 	if !exists {
 		return fmt.Errorf("server '%s' not found", alias)
 	}
 
-	ok, err := ui.Confirm("Delete Server", fmt.Sprintf("Delete server '%s' (%s)?", alias, server.Name))
+	groupName := group.Name
+	if groupName == "" {
+		groupName = groupKey
+	}
+
+	ok, err := ui.Confirm("Delete Server", fmt.Sprintf("Delete server '%s' (%s) from group '%s'?", alias, server.Name, groupName))
 	if err != nil {
 		return err
 	}
@@ -53,7 +63,8 @@ func DeleteAlias(opts cli.Options, alias string) error {
 		return nil
 	}
 
-	delete(cfg.Server, alias)
+	delete(group.Server, alias)
+	cfg.Group[groupKey] = group
 	if err := config.Save(opts.ConfigPath, cfg); err != nil {
 		return err
 	}

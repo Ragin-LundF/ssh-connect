@@ -14,7 +14,8 @@ func Add(opts cli.Options) error {
 	cfg, err := config.Load(opts.ConfigPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			cfg = config.File{Server: map[string]config.Server{}, Group: map[string]config.Group{}}
+			cfg = config.File{Group: map[string]config.Group{}}
+			config.EnsureGroup(&cfg, config.DefaultGroupName)
 			if err := config.Save(opts.ConfigPath, cfg); err != nil {
 				return err
 			}
@@ -36,6 +37,16 @@ func Add(opts cli.Options) error {
 	if _, exists := cfg.Server[alias]; exists {
 		return fmt.Errorf("a server with alias '%s' already exists", alias)
 	}
+	for _, entry := range config.ToEntries(cfg) {
+		if entry.Key == alias {
+			return fmt.Errorf("a server with alias '%s' already exists", alias)
+		}
+	}
+
+	groupKey, err := selectOrCreateGroup(&cfg, "Add Server")
+	if err != nil {
+		return cancellationToNil(err)
+	}
 
 	name, err := ui.PromptInput("Add Server", "Display name:", true)
 	if err != nil {
@@ -54,18 +65,23 @@ func Add(opts cli.Options) error {
 		return cancellationToNil(err)
 	}
 
-	cfg.Server[alias] = config.Server{
+	group := cfg.Group[groupKey]
+	if group.Server == nil {
+		group.Server = map[string]config.Server{}
+	}
+	group.Server[alias] = config.Server{
 		Name:        strings.TrimSpace(name),
 		IP:          strings.TrimSpace(ip),
 		User:        strings.TrimSpace(user),
 		Certificate: strings.TrimSpace(cert),
 	}
+	cfg.Group[groupKey] = group
 
 	if err := config.Save(opts.ConfigPath, cfg); err != nil {
 		return err
 	}
 
-	return ui.ShowMessage("Server Added", fmt.Sprintf("Server '%s' was saved.", alias))
+	return ui.ShowMessage("Server Added", fmt.Sprintf("Server '%s' was saved in group '%s'.", alias, group.Name))
 }
 
 func cancellationToNil(err error) error {

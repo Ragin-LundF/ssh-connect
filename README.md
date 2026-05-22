@@ -11,12 +11,14 @@ written in Go with [`go-tui`](https://github.com/grindlemire/go-tui).
 - In-app actions without any CLI round-trip:
   - connect to a server
   - add a server
+  - add a group
   - delete a server
   - open the main menu
   - show inline help
   - quit
 - Missing-config flow: prompts to add a server when the config file does not exist
-- TOML-based config (`[server.<alias>]`), optional per-server certificate
+- TOML-based grouped config (`[group.<name>.server.<alias>]`)
+- Default group fallback for existing/ungrouped servers (`Default`)
 - `--dry-run` to preview the SSH command without executing it
 - `--debug-ui` to trace UI key-events and screen transitions to stderr
 
@@ -28,12 +30,16 @@ written in Go with [`go-tui`](https://github.com/grindlemire/go-tui).
 |-----|--------|
 | `↑` / `k` | Move selection up |
 | `↓` / `j` | Move selection down |
+| `←` / `→` / `Tab` / `h` / `l` | Switch focus between servers (left) and groups (right) |
 | `Enter` | Connect to selected server |
 | `A` | Add a new server |
+| `G` | Add a new group |
 | `D` | Delete selected server |
 | `M` | Open main menu |
-| `H` | Show help |
+| `?` | Show help |
 | `Q` / `Esc` | Quit |
+
+The right groups pane follows the currently selected server, and selecting a group jumps to that group's first server in the left pane.
 
 ### All dialogs
 
@@ -62,17 +68,29 @@ Only one mode flag (`--init`, `--add`, `--delete`, `--help`) may be given at a t
 
 ## Config Format
 
-Config is a TOML file. Each server lives under `[server.<alias>]`:
+Config is a TOML file organized by groups. Each server lives under `[group.<group>.server.<alias>]`:
 
 ```toml
-[server.my_box]
-name        = "My Box"
-ip          = "192.168.1.10"
-user        = "alice"
+[group.Default]
+name = "Default"
+
+[group.Default.server.my_box]
+name = "My Box"
+ip = "192.168.1.10"
+user = "alice"
 certificate = "~/.ssh/id_ed25519"   # optional
+
+[group.production]
+name = "Production"
+
+[group.production.server.app_prod]
+name = "App Production"
+ip = "203.0.113.10"
+user = "deploy"
 ```
 
 The `certificate` field is optional; when omitted, SSH uses the default key agent.
+If no group is explicitly chosen, the server is placed into `Default`.
 
 ## Project Structure
 

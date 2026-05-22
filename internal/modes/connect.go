@@ -34,12 +34,10 @@ func Connect(opts cli.Options) error {
 		}
 
 		entries := config.ToEntries(cfg)
-		labels := make([]string, 0, len(entries))
-		for _, entry := range entries {
-			labels = append(labels, fmt.Sprintf("%s (%s@%s)", entry.Server.Name, entry.Server.User, entry.Server.IP))
-		}
+		homeItems := buildHomeItems(entries)
+		groups := config.GroupNames(cfg)
 
-		action, idx, err := ui.SelectServerHome(opts.ConfigPath, labels)
+		action, idx, err := ui.SelectServerHome(opts.ConfigPath, homeItems, groups)
 		if err != nil {
 			if err == ui.ErrCancelled {
 				return nil
@@ -66,11 +64,15 @@ func Connect(opts cli.Options) error {
 			if err := Add(opts); err != nil {
 				return err
 			}
+		case ui.HomeAddGroup:
+			if err := AddGroup(opts); err != nil {
+				return err
+			}
 		case ui.HomeDelete:
 			if idx < 0 || idx >= len(entries) {
 				continue
 			}
-			if err := DeleteAlias(opts, entries[idx].Key); err != nil {
+			if err := DeleteAlias(opts, entries[idx].GroupKey, entries[idx].Key); err != nil {
 				return err
 			}
 		case ui.HomeHelp:
@@ -132,6 +134,8 @@ func executeMenuAction(action ui.MenuAction, opts cli.Options, entries []config.
 		return true, nil
 	case ui.MenuAdd:
 		return false, Add(opts)
+	case ui.MenuAddGroup:
+		return false, AddGroup(opts)
 	case ui.MenuDelete:
 		if selected < 0 || selected >= len(entries) {
 			if err := ui.ShowMessage("No Servers", "There is no server to delete."); err != nil {
@@ -139,7 +143,7 @@ func executeMenuAction(action ui.MenuAction, opts cli.Options, entries []config.
 			}
 			return false, nil
 		}
-		return false, DeleteAlias(opts, entries[selected].Key)
+		return false, DeleteAlias(opts, entries[selected].GroupKey, entries[selected].Key)
 	case ui.MenuHelp:
 		return false, ui.ShowMessage("Help", runtimeHelpText())
 	case ui.MenuQuit:
@@ -153,11 +157,35 @@ func executeMenuAction(action ui.MenuAction, opts cli.Options, entries []config.
 
 func runtimeHelpText() string {
 	return "Navigation:\n" +
-		"- Arrow keys/J/K: move in the list\n" +
+		"- Up/Down or J/K: move in active pane\n" +
+		"- Left/Right, Tab or H/L: switch between server pane and group pane\n" +
+		"- Group pane: select a group to jump to its first server\n" +
 		"- Enter: connect to selected server\n" +
 		"- A: add server\n" +
+		"- G: add group\n" +
 		"- D: delete selected server\n" +
 		"- M: open main menu\n" +
-		"- H: show help\n" +
+		"- Main menu: press G to add a group\n" +
+		"- Add server: choose or create a group (default is 'Default')\n" +
+		"- ?: show help\n" +
 		"- Q or Esc: quit"
+}
+
+func buildHomeItems(entries []config.ServerEntry) []ui.HomeServerItem {
+	const maxLabelWidth = 62
+
+	items := make([]ui.HomeServerItem, 0, len(entries))
+	for idx, entry := range entries {
+		label := fmt.Sprintf("%s (%s@%s)", entry.Server.Name, entry.Server.User, entry.Server.IP)
+		runes := []rune(label)
+		if len(runes) > maxLabelWidth {
+			label = string(runes[:maxLabelWidth-3]) + "..."
+		}
+		items = append(items, ui.HomeServerItem{
+			EntryIndex: idx,
+			Label:      label,
+			Group:      entry.GroupName,
+		})
+	}
+	return items
 }
