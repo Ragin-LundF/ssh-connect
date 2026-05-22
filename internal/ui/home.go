@@ -31,6 +31,21 @@ type HomeServerItem struct {
 	Group      string
 }
 
+type homeOverviewRowKind int
+
+const (
+	homeOverviewRowGroup homeOverviewRowKind = iota
+	homeOverviewRowServer
+	homeOverviewRowEmpty
+)
+
+type homeOverviewRow struct {
+	kind        homeOverviewRowKind
+	groupIndex  int
+	serverIndex int
+	text        string
+}
+
 // SelectServerHome shows the main server-list screen.
 // It returns the chosen action, the index of the selected server (-1 if none),
 // and ErrCancelled when the user quits without selecting.
@@ -69,27 +84,32 @@ func SelectServerHome(configPath string, items []HomeServerItem, groups []string
 
 	body := tui.New(
 		tui.WithDisplay(tui.DisplayFlex),
-		tui.WithDirection(tui.Row),
+		tui.WithDirection(tui.Column),
 		tui.WithGap(1),
 		tui.WithFlexGrow(1),
 	)
 
-	serverSection, serverList := newSection("Available Servers")
-	groupSection, groupList := newStaticSection("Available Groups")
-	body.AddChild(serverSection)
-	body.AddChild(groupSection)
+	overviewSection, overviewList := newSection("Server Overview")
+	body.AddChild(overviewSection)
 
-	hint := "Enter: Connect | A: Add Server | G: Add Group | D: Delete | M: Menu | Left/Right/Tab: Switch Pane | Up/Down: Move | ?: Help | Q: Quit"
+	hint := "Enter: Connect | A: Add Server | G: Add Group | D: Delete | M: Menu | Left/Right/Tab: Cycle Groups | Up/Down: Move | ?: Help | Q: Quit"
 	root := buildScreenRoot("🔌 SSH Connect", fmt.Sprintf("Config: %s", configPath), body, hint)
 
 	action := HomeQuit
 	selectedGroup := 0
-	selectedServer := 0
-	focusGroups := false
+	selectedServer := -1
+	if len(normalizedItems) > 0 {
+		selectedServer = 0
+	}
 
 	groupIndexByName := map[string]int{}
 	for idx, group := range groupNames {
 		groupIndexByName[group] = idx
+	}
+
+	serverCountByGroup := map[string]int{}
+	for _, item := range normalizedItems {
+		serverCountByGroup[item.Group]++
 	}
 
 	groupForServer := func(serverIdx int) string {
@@ -133,30 +153,40 @@ func SelectServerHome(configPath string, items []HomeServerItem, groups []string
 	}
 	debugf("home groups initialized names=%v selectedGroup=%d selectedServer=%d", groupNames, selectedGroup, selectedServer)
 
-	serverRows := func() []string {
-		rows := make([]string, 0, len(normalizedItems))
-		prevGroup := ""
-		for _, item := range normalizedItems {
-			sep := "│"
-			if prevGroup != "" && prevGroup != item.Group {
-				sep = "╎"
-			}
-			prevGroup = item.Group
-			rows = append(rows, fmt.Sprintf("%s %s", sep, item.Label))
+	clampSelectedServer := func() {
+		if len(normalizedItems) == 0 {
+			selectedServer = -1
+			return
 		}
-		return rows
-	}
-
-	render := func() {
-		groupRows := buildCompactGroupRows(normalizedItems, groupNames)
-		debugf("home render groups rows=%v selectedGroup=%d focusGroups=%t", groupRows, selectedGroup, focusGroups)
-		renderHomeGroupPane(groupList, groupRows, selectedGroup, focusGroups, "No groups")
-
-		rows := serverRows()
-		if selectedServer >= len(rows) {
+		if selectedServer < 0 {
 			selectedServer = 0
 		}
-		renderHomeList(serverList, rows, selectedServer, !focusGroups, "No servers found. Press 'A' to add one.")
+		if selectedServer >= len(normalizedItems) {
+			selectedServer = len(normalizedItems) - 1
+		}
+	}
+
+	var render func()
+
+	advanceGroup := func(step int) {
+		nextGroup := nextGroupIndexWithServers(groupNames, serverCountByGroup, selectedGroup, step)
+		if nextGroup >= 0 {
+			selectedGroup = nextGroup
+			syncServerFromGroup()
+		}
+		render()
+	}
+
+	render = func() {
+		clampSelectedServer()
+		if len(normalizedItems) > 0 {
+			syncGroupFromServer()
+		}
+
+		rows := buildHomeOverviewRows(normalizedItems, groupNames)
+		debugf("home render overview rows=%d selectedGroup=%d selectedServer=%d", len(rows), selectedGroup, selectedServer)
+		renderHomeOverviewList(overviewList, rows, selectedServer, selectedGroup, "No servers found. Press 'A' to add one.")
+		scrollHomeOverviewToSelection(overviewList, rows, selectedServer)
 	}
 
 	selectedEntryIndex := func() int {
@@ -170,14 +200,6 @@ func SelectServerHome(configPath string, items []HomeServerItem, groups []string
 
 	if err := runUI(root, "home", func(ke tui.KeyEvent) bool {
 		moveUp := func() {
-			if focusGroups {
-				if selectedGroup > 0 {
-					selectedGroup--
-					syncServerFromGroup()
-				}
-				render()
-				return
-			}
 			if selectedServer > 0 {
 				selectedServer--
 				syncGroupFromServer()
@@ -186,11 +208,9 @@ func SelectServerHome(configPath string, items []HomeServerItem, groups []string
 		}
 
 		moveDown := func() {
-			if focusGroups {
-				if selectedGroup < len(groupNames)-1 {
-					selectedGroup++
-					syncServerFromGroup()
-				}
+			if len(normalizedItems) > 0 && selectedServer < 0 {
+				selectedServer = 0
+				syncGroupFromServer()
 				render()
 				return
 			}
@@ -209,32 +229,18 @@ func SelectServerHome(configPath string, items []HomeServerItem, groups []string
 			moveDown()
 			return true
 		case tui.KeyLeft:
-			focusGroups = false
-			render()
+			advanceGroup(-1)
 			return true
 		case tui.KeyRight:
-			focusGroups = true
-			syncGroupFromServer()
-			render()
+			advanceGroup(1)
 			return true
 		case tui.KeyTab:
-			focusGroups = !focusGroups
-			if focusGroups {
-				syncGroupFromServer()
-			}
-			render()
+			advanceGroup(1)
 			return true
 		case tui.KeyEnter:
-			if focusGroups {
-				syncServerFromGroup()
-				debugf("home focus switched to servers from groups pane")
-				focusGroups = false
-				render()
-				return true
-			}
 			entryIdx := selectedEntryIndex()
 			if entryIdx < 0 {
-				debugf("home enter ignored: no server in selected group")
+				debugf("home enter ignored: no server selected")
 				return true
 			}
 			debugf("home connect selected index=%d", entryIdx)
@@ -246,6 +252,8 @@ func SelectServerHome(configPath string, items []HomeServerItem, groups []string
 			action = HomeQuit
 			ke.App().Stop()
 			return true
+		default:
+			// Fall through to rune-based bindings below.
 		}
 
 		r, ok := lowerRune(ke)
@@ -261,16 +269,9 @@ func SelectServerHome(configPath string, items []HomeServerItem, groups []string
 			moveDown()
 			return true
 		case 'l':
-			focusGroups = true
-			syncGroupFromServer()
-			render()
+			advanceGroup(1)
 			return true
 		case 'h':
-			if focusGroups {
-				focusGroups = false
-				render()
-				return true
-			}
 			debugf("home action help")
 			action = HomeHelp
 			ke.App().Stop()
@@ -333,9 +334,9 @@ func normalizeGroupName(group string) string {
 	return trimmed
 }
 
-func renderHomeList(container *tui.Element, items []string, selected int, active bool, emptyMessage string) {
+func renderHomeOverviewList(container *tui.Element, rows []homeOverviewRow, selectedServer int, selectedGroup int, emptyMessage string) {
 	container.RemoveAllChildren()
-	if len(items) == 0 {
+	if len(rows) == 0 {
 		container.AddChild(tui.New(
 			tui.WithText("  ◌ "+emptyMessage),
 			tui.WithTextStyle(tui.NewStyle().Foreground(tui.BrightBlack)),
@@ -344,73 +345,140 @@ func renderHomeList(container *tui.Element, items []string, selected int, active
 		return
 	}
 
-	for idx, item := range items {
-		prefix := "  ◌ "
+	for _, row := range rows {
+		text := row.text
 		style := tui.NewStyle().Foreground(tui.White)
-		if idx == selected {
-			if active {
-				prefix = "  ◉ "
-				style = tui.NewStyle().Foreground(tui.BrightGreen).Background(tui.BrightBlack).Bold()
-			} else {
-				prefix = "  ◉ "
-				style = tui.NewStyle().Foreground(tui.BrightCyan)
+
+		switch row.kind {
+		case homeOverviewRowGroup:
+			prefix := "▸"
+			style = tui.NewStyle().Foreground(tui.BrightCyan).Bold()
+			if row.groupIndex == selectedGroup {
+				prefix = "▾"
+				style = tui.NewStyle().Foreground(tui.BrightCyan).Background(tui.BrightBlack).Bold()
 			}
+			text = prefix + " " + text
+		case homeOverviewRowServer:
+			if row.serverIndex == selectedServer {
+				style = tui.NewStyle().Foreground(tui.BrightGreen).Background(tui.BrightBlack).Bold()
+			}
+		case homeOverviewRowEmpty:
+			style = tui.NewStyle().Foreground(tui.BrightBlack).Dim()
 		}
+
 		container.AddChild(tui.New(
-			tui.WithText(prefix+item),
+			tui.WithText(text),
 			tui.WithTextStyle(style),
 			tui.WithWrap(false),
 		))
 	}
 }
 
-func renderHomeGroupPane(container *tui.Element, items []string, selected int, active bool, emptyMessage string) {
-	container.RemoveAllChildren()
-	if len(items) == 0 {
-		container.AddChild(tui.New(
-			tui.WithText("  - "+emptyMessage),
-			tui.WithTextStyle(tui.NewStyle().Foreground(tui.BrightBlack)),
-			tui.WithWrap(false),
-		))
+func buildHomeOverviewRows(items []HomeServerItem, groups []string) []homeOverviewRow {
+	serverIndexesByGroup := map[string][]int{}
+	for idx, item := range items {
+		serverIndexesByGroup[item.Group] = append(serverIndexesByGroup[item.Group], idx)
+	}
+
+	rows := make([]homeOverviewRow, 0, len(groups)+len(items))
+	for groupIndex, group := range groups {
+		serverIndexes := serverIndexesByGroup[group]
+		count := len(serverIndexes)
+		noun := "servers"
+		if count == 1 {
+			noun = "server"
+		}
+
+		rows = append(rows, homeOverviewRow{
+			kind:        homeOverviewRowGroup,
+			groupIndex:  groupIndex,
+			serverIndex: -1,
+			text:        fmt.Sprintf("%s (%d %s)", group, count, noun),
+		})
+
+		if count == 0 {
+			rows = append(rows, homeOverviewRow{
+				kind:        homeOverviewRowEmpty,
+				groupIndex:  groupIndex,
+				serverIndex: -1,
+				text:        "  └─ No servers",
+			})
+			continue
+		}
+
+		for idx, serverIndex := range serverIndexes {
+			branch := "├─"
+			if idx == len(serverIndexes)-1 {
+				branch = "└─"
+			}
+			rows = append(rows, homeOverviewRow{
+				kind:        homeOverviewRowServer,
+				groupIndex:  groupIndex,
+				serverIndex: serverIndex,
+				text:        fmt.Sprintf("  %s %s", branch, items[serverIndex].Label),
+			})
+		}
+	}
+	return rows
+}
+
+func scrollHomeOverviewToSelection(container *tui.Element, rows []homeOverviewRow, selectedServer int) {
+	if selectedServer < 0 {
 		return
 	}
 
-	lines := make([]string, 0, len(items))
-	for idx, item := range items {
-		prefix := "  "
-		if idx == selected {
-			if active {
-				prefix = "> "
-			} else {
-				prefix = "* "
+	selectedRow := -1
+	anchorRow := -1
+	for idx, row := range rows {
+		if row.serverIndex == selectedServer {
+			selectedRow = idx
+			anchorRow = idx
+			if idx > 0 {
+				prevRow := rows[idx-1]
+				if prevRow.kind == homeOverviewRowGroup && prevRow.groupIndex == row.groupIndex {
+					anchorRow = idx - 1
+				}
 			}
+			break
 		}
-		lines = append(lines, prefix+item)
+	}
+	if selectedRow < 0 {
+		return
 	}
 
-	style := tui.NewStyle().Foreground(tui.White)
-	if active {
-		style = tui.NewStyle().Foreground(tui.BrightGreen)
+	_, viewportHeight := container.ViewportSize()
+	if viewportHeight <= 0 {
+		return
 	}
 
-	container.AddChild(tui.New(
-		tui.WithText(strings.Join(lines, "\n")),
-		tui.WithTextStyle(style),
-		tui.WithWrap(false),
-	))
+	_, scrollY := container.ScrollOffset()
+	switch {
+	case anchorRow < scrollY:
+		container.ScrollTo(0, anchorRow)
+	case selectedRow >= scrollY+viewportHeight:
+		container.ScrollTo(0, selectedRow-viewportHeight+1)
+	}
 }
 
-func buildCompactGroupRows(items []HomeServerItem, groups []string) []string {
-	serverCountByGroup := map[string]int{}
-	for _, item := range items {
-		serverCountByGroup[item.Group]++
+func nextGroupIndexWithServers(groups []string, serverCountByGroup map[string]int, current int, step int) int {
+	if len(groups) == 0 || step == 0 {
+		return -1
 	}
 
-	rows := make([]string, 0, len(groups))
-	for _, group := range groups {
-		count := serverCountByGroup[group]
-		row := fmt.Sprintf("%s (%d)", group, count)
-		rows = append(rows, row)
+	if current < 0 || current >= len(groups) {
+		current = 0
 	}
-	return rows
+
+	for offset := 1; offset <= len(groups); offset++ {
+		idx := current + (offset * step)
+		idx %= len(groups)
+		if idx < 0 {
+			idx += len(groups)
+		}
+		if serverCountByGroup[groups[idx]] > 0 {
+			return idx
+		}
+	}
+
+	return -1
 }
