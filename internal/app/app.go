@@ -13,7 +13,7 @@ func Run(opts cli.Options) error {
 
 	switch opts.Mode {
 	case cli.ModeHelp:
-		fmt.Print(modes.HelpText)
+		fmt.Print(modes.HelpText())
 		return nil
 	case cli.ModeInit:
 		return modes.Init(opts)

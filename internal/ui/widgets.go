@@ -229,17 +229,8 @@ func Confirm(title, question string) (bool, error) {
 func ShowMessage(title, message string) error {
 	debugf("open message screen title=%q", title)
 
-	panel := tui.New(
-		tui.WithDisplay(tui.DisplayFlex),
-		tui.WithDirection(tui.Column),
-		tui.WithGap(1),
-		tui.WithPadding(1),
-		tui.WithBorder(tui.BorderRounded),
-		tui.WithBorderStyle(tui.NewStyle().Foreground(tui.BrightBlue)),
-		tui.WithScrollable(tui.ScrollVertical),
-		tui.WithOverflow(tui.OverflowHidden),
-	)
-	panel.AddChild(tui.New(tui.WithText("ℹ "+message), tui.WithWrap(true), tui.WithTextStyle(tui.NewStyle().Foreground(tui.White))))
+	panel, content := newSection("Message")
+	renderMessageLines(content, message)
 
 	root := buildScreenRoot(title, "", panel, "Enter/Esc: Close")
 
@@ -257,4 +248,32 @@ func ShowMessage(title, message string) error {
 			return false
 		}
 	})
+}
+
+func renderMessageLines(container *tui.Element, message string) {
+	container.RemoveAllChildren()
+	for idx, line := range splitMessageLines(message) {
+		prefix := "  "
+		if idx == 0 {
+			prefix = "ℹ "
+		}
+		container.AddChild(tui.New(
+			tui.WithText(prefix+line),
+			tui.WithWrap(true),
+			tui.WithTextStyle(tui.NewStyle().Foreground(tui.White)),
+		))
+	}
+}
+
+func splitMessageLines(message string) []string {
+	lines := strings.Split(message, "\n")
+	if len(lines) == 0 {
+		return []string{""}
+	}
+	for idx, line := range lines {
+		if line == "" {
+			lines[idx] = " "
+		}
+	}
+	return lines
 }

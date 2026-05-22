@@ -22,9 +22,11 @@ type Options struct {
 	Mode       Mode
 }
 
+const DefaultConfigPath = "ssh_connect_server.toml"
+
 func ParseArgs(args []string) (Options, error) {
 	opts := Options{
-		ConfigPath: "ssh_connect_server.toml",
+		ConfigPath: DefaultConfigPath,
 		Mode:       ModeConnect,
 	}
 

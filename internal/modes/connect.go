@@ -76,7 +76,7 @@ func Connect(opts cli.Options) error {
 				return err
 			}
 		case ui.HomeHelp:
-			if err := ui.ShowMessage("Help", runtimeHelpText()); err != nil {
+			if err := ui.ShowMessage("Help", HelpText()); err != nil {
 				return err
 			}
 		case ui.HomeMenu:
@@ -145,7 +145,7 @@ func executeMenuAction(action ui.MenuAction, opts cli.Options, entries []config.
 		}
 		return false, DeleteAlias(opts, entries[selected].GroupKey, entries[selected].Key)
 	case ui.MenuHelp:
-		return false, ui.ShowMessage("Help", runtimeHelpText())
+		return false, ui.ShowMessage("Help", HelpText())
 	case ui.MenuQuit:
 		return true, nil
 	case ui.MenuList, ui.MenuBack:
@@ -153,22 +153,6 @@ func executeMenuAction(action ui.MenuAction, opts cli.Options, entries []config.
 	default:
 		return false, nil
 	}
-}
-
-func runtimeHelpText() string {
-	return "Navigation:\n" +
-		"- Up/Down or J/K: move in active pane\n" +
-		"- Left/Right, Tab or H/L: switch between server pane and group pane\n" +
-		"- Group pane: select a group to jump to its first server\n" +
-		"- Enter: connect to selected server\n" +
-		"- A: add server\n" +
-		"- G: add group\n" +
-		"- D: delete selected server\n" +
-		"- M: open main menu\n" +
-		"- Main menu: press G to add a group\n" +
-		"- Add server: choose or create a group (default is 'Default')\n" +
-		"- ?: show help\n" +
-		"- Q or Esc: quit"
 }
 
 func buildHomeItems(entries []config.ServerEntry) []ui.HomeServerItem {
