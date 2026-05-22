@@ -13,6 +13,7 @@ The script keeps UI and logic separate:
 - Optional `--dry-run` mode to print the command instead of executing
 - Optional `--config <path>` to use a custom TOML file
 - Optional `--init` to create a complete example config file
+- Optional `--add` to add a new server interactively
 - Safe abort if `--init` target already exists
 
 ## Requirements
@@ -34,6 +35,7 @@ bash ./ssh_connect.sh
 --dry-run           Show SSH command after selection, do not execute it
 --config <path>     Use a custom TOML config file (default: ssh_connect_server.toml)
 --init              Create an example config file and exit
+--add               Add a new server entry via dialog prompts
 -h, --help          Show help
 ```
 
@@ -43,6 +45,7 @@ Examples:
 bash ./ssh_connect.sh --dry-run
 bash ./ssh_connect.sh --config ./my_servers.toml
 bash ./ssh_connect.sh --init --config ./my_servers.toml
+bash ./ssh_connect.sh --add
 ```
 
 ## Configuration Format (TOML)
@@ -94,6 +97,10 @@ These fields are included as a template for future extension. The current runtim
 
 - `check_dependencies()`
   - Verifies `yq` and `dialog` are installed.
+
+- `add_new_server_dialog()`
+  - Prompts for `alias`, `name`, `ip`, and `user` using `dialog`.
+  - Appends a new `[server.<alias>]` section to the TOML config.
 
 - `load_servers()`
   - Reads server entries from the TOML file via `yq`.
