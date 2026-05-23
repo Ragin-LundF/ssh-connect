@@ -1,0 +1,71 @@
+version: 2
+
+project_name: ssh_connect
+
+before:
+  hooks:
+    - go test ./...
+
+builds:
+  - id: ssh_connect
+    main: .
+    binary: ssh_connect
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - arm64
+      - amd64
+    ignore:
+      - goos: darwin
+        goarch: amd64
+
+archives:
+  - id: release-archives
+    ids:
+      - ssh_connect
+    formats:
+      - tar.gz
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{- if eq .Os "darwin" }}macOS{{ else }}{{ .Os }}{{ end }}_{{- if eq .Arch "amd64" }}x86_64{{ else }}{{ .Arch }}{{ end }}
+    files:
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+
+release:
+  draft: false
+  prerelease: auto
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+      - '^ci:'
+
+brews:
+  - repository:
+      owner: "{{ .Env.HOMEBREW_TAP_OWNER }}"
+      name: "{{ .Env.HOMEBREW_TAP_NAME }}"
+      branch: main
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    name: ssh-connect
+    directory: Formula
+    homepage: "https://github.com/{{ .Env.GITHUB_REPOSITORY }}"
+    description: "Terminal UI for organizing and connecting to SSH servers"
+    commit_author:
+      name: github-actions[bot]
+      email: 41898282+github-actions[bot]@users.noreply.github.com
+    commit_msg_template: "Brew formula update for {{ .ProjectName }} {{ .Tag }}"
+    install: |
+      bin.install "ssh_connect"
+    test: |
+      system "#{bin}/ssh_connect", "--help"
+
+

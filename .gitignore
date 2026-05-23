@@ -11,3 +11,7 @@
 
 # don't commit config files
 *.toml
+
+# generated build artifacts
+dist/
+

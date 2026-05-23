@@ -1,0 +1,52 @@
+name: release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  goreleaser:
+    runs-on: ubuntu-latest
+    env:
+      HOMEBREW_TAP_OWNER: ${{ github.repository_owner }}
+      HOMEBREW_TAP_NAME: ${{ vars.HOMEBREW_TAP_NAME }}
+      HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Validate Homebrew tap configuration
+        run: |
+          if [[ -z "${HOMEBREW_TAP_NAME}" ]]; then
+            echo "::error::Missing repository variable HOMEBREW_TAP_NAME (for example: homebrew-tap)."
+            exit 1
+          fi
+
+          if [[ -z "${HOMEBREW_TAP_GITHUB_TOKEN}" ]]; then
+            echo "::error::Missing repository secret HOMEBREW_TAP_GITHUB_TOKEN."
+            exit 1
+          fi
+
+      - name: Publish GitHub release and update tap
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: v2.15.4
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HOMEBREW_TAP_OWNER: ${{ env.HOMEBREW_TAP_OWNER }}
+          HOMEBREW_TAP_NAME: ${{ env.HOMEBREW_TAP_NAME }}
+          HOMEBREW_TAP_GITHUB_TOKEN: ${{ env.HOMEBREW_TAP_GITHUB_TOKEN }}
+
+
