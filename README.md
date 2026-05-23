@@ -5,6 +5,10 @@ built in Go with [`go-tui`](https://github.com/grindlemire/go-tui).
 It helps you keep multiple systems grouped and easy to browse from one place,
 then launches the matching `ssh` command for the server you select.
 
+Screenshot:
+
+![Screenshot](docs/screenshot.png)
+
 ## Features
 
 - Interactive home screen with a grouped server overview tree
