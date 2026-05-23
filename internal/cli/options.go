@@ -3,6 +3,8 @@ package cli
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 )
 
 type Mode string
@@ -22,7 +24,18 @@ type Options struct {
 	Mode       Mode
 }
 
-const DefaultConfigPath = "ssh_connect_server.toml"
+const DefaultConfigFilename = "ssh_connect_server.toml"
+
+var DefaultConfigPath = defaultConfigPath()
+
+func defaultConfigPath() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return DefaultConfigFilename
+	}
+
+	return filepath.Join(home, DefaultConfigFilename)
+}
 
 func ParseArgs(args []string) (Options, error) {
 	opts := Options{
