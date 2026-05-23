@@ -49,23 +49,21 @@ changelog:
       - '^chore:'
       - '^ci:'
 
-brews:
+homebrew_casks:
   - repository:
       owner: "{{ .Env.HOMEBREW_TAP_OWNER }}"
       name: "{{ .Env.HOMEBREW_TAP_NAME }}"
       branch: main
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     name: ssh-connect
-    directory: Formula
+    directory: Casks
     homepage: "https://github.com/{{ .Env.GITHUB_REPOSITORY }}"
     description: "Terminal UI for organizing and connecting to SSH servers"
     commit_author:
       name: github-actions[bot]
       email: 41898282+github-actions[bot]@users.noreply.github.com
-    commit_msg_template: "Brew formula update for {{ .ProjectName }} {{ .Tag }}"
-    install: |
-      bin.install "ssh_connect"
-    test: |
-      system "#{bin}/ssh_connect", "--help"
+    commit_msg_template: "Brew cask update for {{ .ProjectName }} {{ .Tag }}"
+    binaries:
+      - ssh_connect
 
 

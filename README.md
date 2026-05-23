@@ -183,20 +183,16 @@ This repository now includes GitHub Actions + GoReleaser automation for:
 - Linux AMD64 (`linux/amd64`)
 - Linux ARM64 (`linux/arm64`)
 - release checksums
-- Homebrew tap updates for macOS installs
+- Homebrew tap cask updates for macOS installs
 
 ### Install from Homebrew
 
 After the first tagged release has been published and the tap repository exists:
 
 ```bash
-brew tap <github-owner>/<tap-repo>
-brew install ssh-connect
+brew tap Ragin-LundF/homebrew-tap-ssh_connect
+brew install --cask ssh-connect
 ```
 
 The installed executable name remains `ssh_connect`.
-
-### Maintainer setup
-
-See [`docs/releasing.md`](docs/releasing.md) for the exact GitHub repositories, secrets, variables, and tag workflow needed to make releases and the Brew tap work end-to-end.
 
