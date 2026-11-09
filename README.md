@@ -187,12 +187,13 @@ This repository now includes GitHub Actions + GoReleaser automation for:
 
 ### Install from Homebrew
 
-After the first tagged release has been published and the tap repository exists:
-
 ```bash
-brew tap Ragin-LundF/homebrew-tap-ssh_connect
-brew install --cask ssh-connect
+brew install --cask ragin-lundf/tap/ssh-connect
 ```
+
+The tap [Ragin-LundF/homebrew-tap](https://github.com/Ragin-LundF/homebrew-tap) also holds casks for other
+Ragin-LundF apps. It was called `homebrew-tap-ssh_connect` before; an existing tap keeps working, or switch with
+`brew untap ragin-lundf/tap-ssh_connect && brew tap ragin-lundf/tap`.
 
 The installed executable name remains `ssh_connect`.
 
